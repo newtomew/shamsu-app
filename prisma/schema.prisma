@@ -1,0 +1,334 @@
+// Shamsu — Prisma schema
+// Mirrors SHAMSU_PRD.md section 3.6 table-for-table. Field names/types kept faithful
+// to the PRD; relations added where the PRD implies a foreign key.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Users
+// ---------------------------------------------------------------------------
+model User {
+  id                  String   @id @default(uuid())
+  email               String   @unique @db.VarChar(255)
+  passwordHash        String   @map("password_hash") @db.VarChar(255)
+  name                String?  @db.VarChar(255)
+  mode                String   @default("non-tech") @db.VarChar(16) // 'non-tech' | 'developer'
+  apiCreditsBalance   Decimal  @default(0) @map("api_credits_balance") @db.Decimal(12, 2)
+  credentialVaultType String   @default("shamsu") @map("credential_vault_type") @db.VarChar(16) // 'shamsu' | 'vault-io' | '1password'
+  // Not in PRD section 3.6 (that section has no separate admin/staff table) —
+  // added in Phase 10 since gating the admin panel needs some way to know
+  // who's staff. isAdmin is granted out-of-band (direct DB write), never via
+  // any self-service endpoint.
+  isAdmin             Boolean  @default(false) @map("is_admin")
+  // 3-stage enforcement (PRD section 4.3): 'none' | 'warning' | 'final_warning' | 'banned'
+  moderationStatus    String   @default("none") @map("moderation_status") @db.VarChar(16)
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  // relations
+  apis                     Api[]                 @relation("CreatorApis")
+  apiCalls                 ApiCall[]             @relation("CallerApiCalls")
+  apiKeysCreated           ApiKey[]              @relation("ApiKeyCreatedBy")
+  credentialsVault         CredentialsVault[]
+  marketplacePurchases     MarketplacePurchase[] @relation("BuyerPurchases")
+  replayQueueEntries       ReplayQueue[]         @relation("CallerReplayQueue")
+  creditPurchases          CreditPurchase[]      @relation("UserCreditPurchases")
+  creditPurchasesConfirmed CreditPurchase[]      @relation("AdminConfirmedPurchases")
+  creatorEarnings          CreatorEarnings?
+  disputesFiled            Dispute[]             @relation("BuyerDisputes")
+  disputesResolved         Dispute[]             @relation("AdminResolvedDisputes")
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// APIs (recorded flows)
+// ---------------------------------------------------------------------------
+model Api {
+  id                    String   @id @default(uuid())
+  creatorId             String   @map("creator_id")
+  name                  String   @db.VarChar(255)
+  description           String?
+  endpointUrl           String   @map("endpoint_url") @db.VarChar(255)
+  status                String   @default("active") @db.VarChar(16) // 'active' | 'paused' | 'deleted' | 'flagged' (Phase 10: admin-suspended)
+  recordedFlow          Json     @map("recorded_flow")
+  variableSchema        Json?    @map("variable_schema")
+  outputSchema          Json?    @map("output_schema")
+  // Raw classifier output (replay_mode, needs_login, variables, output_fields,
+  // reason, claude_tokens_used) verbatim, so the confirmation screen can load
+  // it without re-running the classifier. Not in PRD section 3.6 — same kind
+  // of engine plumbing as the `sessions` table (Phase 2), not a product table.
+  lastClassification    Json?    @map("last_classification")
+  replayMode            String   @default("browser_replay") @map("replay_mode") @db.VarChar(24) // 'network_replay' | 'browser_replay' | 'hybrid' | (P2:'self_heal')
+  // AES-256-GCM ciphertext of recorded_flow, written when a creator deletes
+  // the API (PRD section 4.5 disaster recovery: "Shamsu keeps an encrypted
+  // copy in a library"). Not in PRD section 3.6 by name, but explicitly
+  // required by that recovery flow — there's no other column for it.
+  encryptedBackup       String?  @map("encrypted_backup")
+  credentialsEncrypted  String?  @map("credentials_encrypted")
+  credentialType        String   @default("stored") @map("credential_type") @db.VarChar(24) // 'stored' | 'caller-provided' | 'prompt-on-call'
+  maxExecutionTime      Int      @default(600) @map("max_execution_time") // seconds (10 min)
+  cacheEnabled          Boolean  @default(false) @map("cache_enabled")
+  cacheDuration         Int      @default(300) @map("cache_duration")
+  rateLimitPerSec       Int      @default(50) @map("rate_limit_per_sec")
+  maxConcurrent         Int      @default(50) @map("max_concurrent")
+  currentVersion        Int      @default(1) @map("current_version")
+  isLatest              Boolean  @default(true) @map("is_latest")
+  isListedInMarketplace Boolean  @default(false) @map("is_listed_in_marketplace")
+  marketplacePrice      Decimal? @map("marketplace_price") @db.Decimal(12, 2)
+  marketplaceCategory   String?  @map("marketplace_category") @db.VarChar(100)
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // relations
+  creator              User                  @relation("CreatorApis", fields: [creatorId], references: [id])
+  versions             ApiVersion[]
+  calls                ApiCall[]
+  keys                 ApiKey[]
+  credentialsVault     CredentialsVault[]
+  marketplaceListing   MarketplaceListing?
+  marketplacePurchases MarketplacePurchase[]
+  replayQueueEntries   ReplayQueue[]
+  session              Session?
+  disputes             Dispute[]
+
+  @@map("apis")
+}
+
+// ---------------------------------------------------------------------------
+// Sessions — one cached logged-in session per API, the `hybrid` replay_mode
+// trick: log in once via a real browser, cache the cookies, reuse them for
+// fast network replay until they expire. Not in PRD section 3.6 (that section
+// covers product/business tables) but required engine plumbing for the
+// `hybrid` mode described in section 3.2 — ported from shamsu-engine's
+// storage.js `sessions` table, same shape.
+// ---------------------------------------------------------------------------
+model Session {
+  apiId      String   @id @map("api_id")
+  cookies    Json
+  capturedAt DateTime @default(now()) @map("captured_at")
+  expiresAt  DateTime @map("expires_at")
+
+  api Api @relation(fields: [apiId], references: [id])
+
+  @@map("sessions")
+}
+
+// ---------------------------------------------------------------------------
+// API versions
+// ---------------------------------------------------------------------------
+model ApiVersion {
+  id             String   @id @default(uuid())
+  apiId          String   @map("api_id")
+  versionNumber  Int      @map("version_number")
+  recordedFlow   Json     @map("recorded_flow")
+  variableSchema Json?    @map("variable_schema")
+  outputSchema   Json?    @map("output_schema")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  api Api @relation(fields: [apiId], references: [id])
+
+  @@unique([apiId, versionNumber])
+  @@map("api_versions")
+}
+
+// ---------------------------------------------------------------------------
+// API calls (logs + metering)
+// ---------------------------------------------------------------------------
+model ApiCall {
+  id               String   @id @default(uuid())
+  apiId            String   @map("api_id")
+  callerId         String   @map("caller_id")
+  requestBody      Json?    @map("request_body")
+  responseData     Json?    @map("response_data")
+  status           String   @default("success") @db.VarChar(16) // 'success'|'failed'|'timeout'|'rate_limited'
+  errorMessage     String?  @map("error_message")
+  latencyMs        Int?     @map("latency_ms")
+  costBdt          Decimal? @map("cost_bdt") @db.Decimal(12, 4)
+  // metering (Phase-2 weighted pricing enabler; log from call #1)
+  stepCount        Int?     @map("step_count")
+  executionTimeMs  Int?     @map("execution_time_ms")
+  chromeDurationMs Int?     @map("chrome_duration_ms")
+  claudeTokensUsed Int?     @map("claude_tokens_used")
+  timestamp        DateTime @default(now())
+  // NOTE: never log credentials or full sensitive request/response bodies in production
+
+  api    Api  @relation(fields: [apiId], references: [id])
+  caller User @relation("CallerApiCalls", fields: [callerId], references: [id])
+
+  @@map("api_calls")
+}
+
+// ---------------------------------------------------------------------------
+// API keys (multiple per API)
+// ---------------------------------------------------------------------------
+model ApiKey {
+  id              String    @id @default(uuid())
+  apiId           String    @map("api_id")
+  keyHash         String    @unique @map("key_hash") @db.VarChar(255)
+  name            String?   @db.VarChar(100) // 'production' | 'testing'
+  createdByUserId String    @map("created_by_user_id")
+  revokedAt       DateTime? @map("revoked_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  api       Api  @relation(fields: [apiId], references: [id])
+  createdBy User @relation("ApiKeyCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@map("api_keys")
+}
+
+// ---------------------------------------------------------------------------
+// Credentials vault
+// ---------------------------------------------------------------------------
+model CredentialsVault {
+  id                 String   @id @default(uuid())
+  userId             String   @map("user_id")
+  apiId              String?  @map("api_id")
+  encryptedUsername  String?  @map("encrypted_username")
+  encryptedPassword  String?  @map("encrypted_password")
+  encryptedAuthToken String?  @map("encrypted_auth_token")
+  vaultType          String   @default("basic") @map("vault_type") @db.VarChar(16) // 'basic'|'oauth'|'bearer-token'
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+  api  Api? @relation(fields: [apiId], references: [id])
+
+  @@map("credentials_vault")
+}
+
+// ---------------------------------------------------------------------------
+// Marketplace listings
+// ---------------------------------------------------------------------------
+model MarketplaceListing {
+  id              String   @id @default(uuid())
+  apiId           String   @unique @map("api_id")
+  price           Decimal  @db.Decimal(12, 2)
+  pricingModel    String   @default("per_call") @map("pricing_model") @db.VarChar(16) // 'per_call' | 'subscription'
+  description     String?
+  category        String?  @db.VarChar(100)
+  documentation   String?
+  exampleRequest  Json?    @map("example_request")
+  exampleResponse Json?    @map("example_response")
+  rating          Decimal  @default(0) @db.Decimal(3, 2)
+  reviewCount     Int      @default(0) @map("review_count")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  api Api @relation(fields: [apiId], references: [id])
+
+  @@map("marketplace_listings")
+}
+
+// ---------------------------------------------------------------------------
+// Marketplace purchases (buyer access)
+// ---------------------------------------------------------------------------
+model MarketplacePurchase {
+  id           String   @id @default(uuid())
+  apiId        String   @map("api_id")
+  buyerId      String   @map("buyer_id")
+  purchaseDate DateTime @default(now()) @map("purchase_date")
+  pricePaid    Decimal? @map("price_paid") @db.Decimal(12, 2)
+  status       String   @default("active") @db.VarChar(16) // 'active'|'refunded'|'disputed'
+
+  api      Api       @relation(fields: [apiId], references: [id])
+  buyer    User      @relation("BuyerPurchases", fields: [buyerId], references: [id])
+  disputes Dispute[]
+
+  @@map("marketplace_purchases")
+}
+
+// ---------------------------------------------------------------------------
+// Replay queue (async job processing)
+// ---------------------------------------------------------------------------
+model ReplayQueue {
+  id           String    @id @default(uuid())
+  apiId        String    @map("api_id")
+  callerId     String    @map("caller_id")
+  requestBody  Json?     @map("request_body")
+  status       String    @default("queued") @db.VarChar(16) // 'queued'|'processing'|'completed'|'failed'
+  retryCount   Int       @default(0) @map("retry_count")
+  maxRetries   Int       @default(5) @map("max_retries")
+  result       Json?
+  errorMessage String?   @map("error_message")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+
+  api    Api  @relation(fields: [apiId], references: [id])
+  caller User @relation("CallerReplayQueue", fields: [callerId], references: [id])
+
+  @@map("replay_queue")
+}
+
+// ---------------------------------------------------------------------------
+// Credit purchases (manual bKash confirmation)
+// ---------------------------------------------------------------------------
+model CreditPurchase {
+  id                 String    @id @default(uuid())
+  userId             String    @map("user_id")
+  amountBdt          Decimal   @map("amount_bdt") @db.Decimal(12, 2)
+  creditsAdded       Int       @map("credits_added")
+  paymentMethod      String    @default("bkash") @map("payment_method") @db.VarChar(16) // 'bkash'|'manual'
+  paymentReference   String?   @map("payment_reference") @db.VarChar(255) // bKash transaction number
+  status             String    @default("pending") @db.VarChar(16) // 'pending'|'confirmed'|'failed'
+  confirmedByAdminId String?   @map("confirmed_by_admin_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  confirmedAt        DateTime? @map("confirmed_at")
+
+  user             User  @relation("UserCreditPurchases", fields: [userId], references: [id])
+  confirmedByAdmin User? @relation("AdminConfirmedPurchases", fields: [confirmedByAdminId], references: [id])
+
+  @@map("credit_purchases")
+}
+
+// ---------------------------------------------------------------------------
+// Creator earnings
+// ---------------------------------------------------------------------------
+model CreatorEarnings {
+  id             String    @id @default(uuid())
+  creatorId      String    @unique @map("creator_id")
+  totalEarnings  Decimal   @default(0) @map("total_earnings") @db.Decimal(12, 2)
+  pendingPayout  Decimal   @default(0) @map("pending_payout") @db.Decimal(12, 2)
+  paidOut        Decimal   @default(0) @map("paid_out") @db.Decimal(12, 2)
+  lastPayoutDate DateTime? @map("last_payout_date")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  creator User @relation(fields: [creatorId], references: [id])
+
+  @@map("creator_earnings")
+}
+
+// ---------------------------------------------------------------------------
+// Disputes (Phase 10, PRD section 4.3) — a buyer's support ticket over a
+// purchase. Not in PRD section 3.6's table list (that section predates the
+// admin panel's dispute workflow) — marketplace_purchases.status already has
+// a 'disputed' value, but nothing to hold the buyer's reason, the admin's
+// test run, or the resolution outcome, so a dedicated table is needed.
+// ---------------------------------------------------------------------------
+model Dispute {
+  id                String    @id @default(uuid())
+  purchaseId        String    @map("purchase_id")
+  buyerId           String    @map("buyer_id")
+  apiId             String    @map("api_id")
+  reason            String
+  status            String    @default("open") @db.VarChar(16) // 'open' | 'resolved'
+  resolution        String?   @db.VarChar(24) // 'refunded_50' | 'refunded_100' | 'denied'
+  adminNotes        String?   @map("admin_notes")
+  testResult        Json?     @map("test_result") // the admin's auto-test run, kept for audit
+  resolvedByAdminId String?   @map("resolved_by_admin_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  resolvedAt        DateTime? @map("resolved_at")
+
+  purchase        MarketplacePurchase @relation(fields: [purchaseId], references: [id])
+  buyer           User                @relation("BuyerDisputes", fields: [buyerId], references: [id])
+  api             Api                 @relation(fields: [apiId], references: [id])
+  resolvedByAdmin User?               @relation("AdminResolvedDisputes", fields: [resolvedByAdminId], references: [id])
+
+  @@map("disputes")
+}
