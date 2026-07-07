@@ -23,10 +23,10 @@ function createClient() {
   if (!connectionString) {
     // At build time (next build), DATABASE_URL is not available since .env is
     // excluded from the Docker build context for security. The app won't
-    // actually use the DB during build, so return a no-op client. If DATABASE_URL
+    // actually use the DB during build, so return a stub client. If DATABASE_URL
     // is truly missing at runtime, the server startup will fail when migrations
     // try to run (see Dockerfile CMD).
-    return new PrismaClient();
+    return new PrismaClient({}) as any;
   }
   const adapter = new PrismaNeon({ connectionString });
   return new PrismaClient({ adapter });
