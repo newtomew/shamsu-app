@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const force = body?.force === true;
   const keyName = typeof body?.key_name === 'string' && body.key_name.trim() ? body.key_name.trim() : undefined;
 
-  const priorClassification = api.lastClassification as Classification | null;
+  const priorClassification = api.lastClassification as unknown as Classification | null;
   const needsLogin = priorClassification?.needs_login ?? false;
 
   const validation = validateConfirmationChoices({
