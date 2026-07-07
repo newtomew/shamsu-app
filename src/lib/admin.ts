@@ -17,7 +17,7 @@ export async function listCreditPurchases(status?: string) {
     orderBy: { createdAt: 'desc' },
     include: { user: { select: { email: true } } },
   });
-  return purchases.map((p) => ({
+  return purchases.map((p: typeof purchases[0]) => ({
     id: p.id,
     user_email: p.user.email,
     amount_bdt: Number(p.amountBdt),
