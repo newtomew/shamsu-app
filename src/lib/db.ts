@@ -21,7 +21,12 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 function createClient() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error('DATABASE_URL is not set — copy .env.example to .env and fill it in.');
+    // At build time (next build), DATABASE_URL is not available since .env is
+    // excluded from the Docker build context for security. The app won't
+    // actually use the DB during build, so return a no-op client. If DATABASE_URL
+    // is truly missing at runtime, the server startup will fail when migrations
+    // try to run (see Dockerfile CMD).
+    return new PrismaClient();
   }
   const adapter = new PrismaNeon({ connectionString });
   return new PrismaClient({ adapter });
