@@ -27,6 +27,13 @@ FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# The deps stage already ran `prisma generate` (via npm ci's postinstall), but
+# src/generated/prisma is gitignored AND excluded in .dockerignore (so stale
+# generated code never leaks into a build from the host machine) — which also
+# means it never survives the copy into THIS stage either. Regenerating here,
+# now that the full schema + source are present, is what actually makes
+# @/generated/prisma/client resolvable for `next build`.
+RUN npx prisma generate
 RUN npm run build
 
 # ---- runner: the actual production image ----
