@@ -32,13 +32,14 @@ export async function getCreatorApisSummary(creatorId: string) {
 
   return Promise.all(
     apis.map(async (api) => {
-      const [totalCalls, buyerAgg] = await Promise.all([
+      const [totalCalls, buyerAgg, lastCall] = await Promise.all([
         db.apiCall.count({ where: { apiId: api.id } }),
         db.apiCall.groupBy({
           by: ['callerId'],
           where: { apiId: api.id, NOT: { callerId: creatorId } },
           _sum: { costBdt: true },
         }),
+        db.apiCall.findFirst({ where: { apiId: api.id }, orderBy: { timestamp: 'desc' }, select: { timestamp: true } }),
       ]);
       const revenueBdt = buyerAgg.reduce((sum, row) => sum + Number(row._sum.costBdt || 0), 0);
 
@@ -49,6 +50,7 @@ export async function getCreatorApisSummary(creatorId: string) {
         replay_mode: api.replayMode,
         is_listed_in_marketplace: api.isListedInMarketplace,
         created_at: api.createdAt,
+        last_called_at: lastCall?.timestamp ?? null,
         total_calls: totalCalls,
         active_buyers: buyerAgg.length,
         revenue_bdt: revenueBdt,
@@ -171,6 +173,30 @@ export async function getDailyEarningsByBuyer(creatorId: string, days = 14) {
     ORDER BY day DESC
   `;
   return rows;
+}
+
+// Dashboard "recent activity" feed — latest calls of any status across all
+// of a creator's APIs (getErrorLogs below is the same shape but pre-filtered
+// to failures only, kept separate since analytics' "error logs" section is
+// a distinct, already-shipped PRD requirement).
+export async function getRecentActivity(creatorId: string, limit = 15) {
+  const apiIds = await getCreatorApiIds(creatorId);
+  if (apiIds.length === 0) return [];
+  const rows = await db.apiCall.findMany({
+    where: { apiId: { in: apiIds } },
+    orderBy: { timestamp: 'desc' },
+    take: limit,
+    include: { caller: { select: { email: true } }, api: { select: { name: true } } },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    timestamp: r.timestamp,
+    api_name: r.api.name,
+    buyer: r.caller.email,
+    status: r.status,
+    latency_ms: r.latencyMs,
+    error: r.errorMessage,
+  }));
 }
 
 export async function getErrorLogs(creatorId: string, limit = 50) {

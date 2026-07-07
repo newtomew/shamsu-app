@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
-import { getUsageOverTime, getTopBuyers, getDailyEarningsByBuyer, getErrorLogs } from '@/lib/creatorData';
+import { getUsageOverTime, getTopBuyers, getDailyEarningsByBuyer, getErrorLogs, getRecentActivity } from '@/lib/creatorData';
 
 export async function GET(req: NextRequest) {
   const user = await getSessionUser(req);
@@ -14,15 +14,22 @@ export async function GET(req: NextRequest) {
 
   const days = Number(req.nextUrl.searchParams.get('days')) || 14;
 
-  const [usageOverTime, topBuyers, dailyEarningsByBuyer, errorLogs] = await Promise.all([
+  const [usageOverTime, topBuyers, dailyEarningsByBuyer, errorLogs, recentActivity] = await Promise.all([
     getUsageOverTime(user.id, days),
     getTopBuyers(user.id),
     getDailyEarningsByBuyer(user.id, days),
     getErrorLogs(user.id),
+    getRecentActivity(user.id),
   ]);
 
   return NextResponse.json({
     success: true,
-    data: { usage_over_time: usageOverTime, top_buyers: topBuyers, daily_earnings_by_buyer: dailyEarningsByBuyer, error_logs: errorLogs },
+    data: {
+      usage_over_time: usageOverTime,
+      top_buyers: topBuyers,
+      daily_earnings_by_buyer: dailyEarningsByBuyer,
+      error_logs: errorLogs,
+      recent_activity: recentActivity,
+    },
   });
 }

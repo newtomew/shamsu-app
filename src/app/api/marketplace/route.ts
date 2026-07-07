@@ -18,8 +18,9 @@ export async function GET(req: NextRequest) {
   const minPrice = params.get('min_price') ? Number(params.get('min_price')) : undefined;
   const maxPrice = params.get('max_price') ? Number(params.get('max_price')) : undefined;
   const minRating = params.get('min_rating') ? Number(params.get('min_rating')) : undefined;
+  const search = params.get('search') || undefined;
   const sort = (params.get('sort') as 'rating' | 'popularity' | 'price_asc' | 'price_desc' | null) || undefined;
 
-  const listings = await browseListings({ category, minPrice, maxPrice, minRating, sort });
+  const listings = await browseListings({ category, minPrice, maxPrice, minRating, search, sort });
   return NextResponse.json({ success: true, data: listings });
 }

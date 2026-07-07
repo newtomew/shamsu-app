@@ -23,7 +23,7 @@ export const BUTTON_SIZE_CLASSES: Record<ButtonSize, string> = {
 };
 
 export const BUTTON_BASE_CLASSES =
-  'inline-flex items-center justify-center rounded-lg font-medium transition-colors ' +
+  'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150 active:scale-[0.97] ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-page';
 
 // Shares Button's exact variant/size styling with plain <a> tags — for

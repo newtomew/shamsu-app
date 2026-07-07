@@ -90,3 +90,31 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const { notifiedBuyerCount } = await deleteApiWithBackup(params.id);
   return NextResponse.json({ success: true, data: { notified_buyer_count: notifiedBuyerCount } });
 }
+
+// PATCH /api/apis/:id — creator pause/resume toggle. Deliberately narrow:
+// only 'active' and 'paused' are accepted here (never 'deleted', which stays
+// exclusive to DELETE's soft-delete-with-backup flow above).
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const user = await getSessionUser(req);
+  if (!user) {
+    return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
+  }
+  const api = await store.getApi(params.id);
+  if (!api) {
+    return NextResponse.json({ success: false, error: 'api not found' }, { status: 404 });
+  }
+  if (api.creatorId !== user.id) {
+    return NextResponse.json({ success: false, error: 'You do not own this API' }, { status: 403 });
+  }
+  if (api.status !== 'active' && api.status !== 'paused') {
+    return NextResponse.json({ success: false, error: `Cannot change status of a ${api.status} API.` }, { status: 400 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  if (body?.status !== 'active' && body?.status !== 'paused') {
+    return NextResponse.json({ success: false, error: "status must be 'active' or 'paused'." }, { status: 400 });
+  }
+
+  await store.setApiStatus(params.id, body.status);
+  return NextResponse.json({ success: true, data: { status: body.status } });
+}

@@ -158,10 +158,18 @@ export async function resolveDispute(
 // ---------------------------------------------------------------------------
 // 3. Creator/API management + 3-stage enforcement (PRD 4.3)
 // ---------------------------------------------------------------------------
+// take: 200 is a safety cap, not real pagination — this is an internal ops
+// list, not expected to need thousands of rows in one screen. Prevents an
+// unbounded table scan as the platform grows; the admin UI further reveals
+// these progressively (Table + "Show more") rather than rendering all 200
+// rows at once.
+const ADMIN_LIST_CAP = 200;
+
 export async function listCreators() {
   const users = await db.user.findMany({
     orderBy: { createdAt: 'desc' },
     include: { _count: { select: { apis: true } } },
+    take: ADMIN_LIST_CAP,
   });
   return users.map((u) => ({
     id: u.id,
@@ -188,6 +196,7 @@ export async function listAllApis() {
   const apis = await db.api.findMany({
     orderBy: { createdAt: 'desc' },
     include: { creator: { select: { email: true, moderationStatus: true } } },
+    take: ADMIN_LIST_CAP,
   });
   return apis.map((a) => ({
     id: a.id,

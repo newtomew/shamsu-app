@@ -21,19 +21,24 @@ export default function SignupPage() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const res = await fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name: name || undefined }),
-    });
-    const json = await res.json();
-    setBusy(false);
-    if (!json.success) {
-      setError(json.error);
-      return;
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name: name || undefined }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setError(json.error);
+        return;
+      }
+      router.push('/welcome');
+      router.refresh();
+    } catch {
+      setError('Could not reach the server. Check your connection and try again.');
+    } finally {
+      setBusy(false);
     }
-    router.push('/');
-    router.refresh();
   }
 
   return (

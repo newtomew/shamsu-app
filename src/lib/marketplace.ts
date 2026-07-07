@@ -22,6 +22,7 @@ export interface BrowseFilters {
   minPrice?: number;
   maxPrice?: number;
   minRating?: number;
+  search?: string;
   sort?: 'rating' | 'popularity' | 'price_asc' | 'price_desc';
 }
 
@@ -34,19 +35,29 @@ export async function browseListings(filters: BrowseFilters) {
       ...(filters.minPrice != null ? { price: { gte: filters.minPrice } } : {}),
       ...(filters.maxPrice != null ? { price: { lte: filters.maxPrice } } : {}),
       ...(filters.minRating != null ? { rating: { gte: filters.minRating } } : {}),
+      ...(filters.search
+        ? {
+            OR: [
+              { api: { name: { contains: filters.search, mode: 'insensitive' } } },
+              { description: { contains: filters.search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
     },
     include: { api: { select: { id: true, name: true } } },
   });
 
-  let popularityByApiId = new Map<string, number>();
-  if (filters.sort === 'popularity') {
-    const counts = await db.apiCall.groupBy({
-      by: ['apiId'],
-      where: { apiId: { in: listings.map((l) => l.apiId) } },
-      _count: { _all: true },
-    });
-    popularityByApiId = new Map(counts.map((c) => [c.apiId, c._count._all]));
-  }
+  // Popularity (call count) is shown on every card regardless of sort mode,
+  // so it's always computed here, not just when sort === 'popularity'.
+  const counts =
+    listings.length > 0
+      ? await db.apiCall.groupBy({
+          by: ['apiId'],
+          where: { apiId: { in: listings.map((l) => l.apiId) } },
+          _count: { _all: true },
+        })
+      : [];
+  const popularityByApiId = new Map(counts.map((c) => [c.apiId, c._count._all]));
 
   const results = listings.map((l) => ({
     api_id: l.apiId,
@@ -78,6 +89,44 @@ export async function browseListings(filters: BrowseFilters) {
       break;
   }
   return results;
+}
+
+// Single-listing detail (marketplace/[id]) — same public-fields-only rule as
+// browseListings, plus rate_limit_per_sec/max_concurrent (real "SLA" fields
+// that already exist on `apis`, PRD 3.6) and whether the viewer already
+// bought it. viewerId is optional only so this can't accidentally be called
+// without a session upstream — the route always passes one.
+export async function getListingPublic(apiId: string, viewerId: string) {
+  const listing = await db.marketplaceListing.findUnique({
+    where: { apiId },
+    include: {
+      api: { select: { id: true, name: true, status: true, rateLimitPerSec: true, maxConcurrent: true } },
+    },
+  });
+  if (!listing || !listing.isActive || listing.api.status !== 'active') return null;
+
+  const [popularity, hasPurchased] = await Promise.all([
+    db.apiCall.count({ where: { apiId } }),
+    getActivePurchase(apiId, viewerId),
+  ]);
+
+  return {
+    api_id: listing.apiId,
+    name: listing.api.name,
+    description: listing.description,
+    price: Number(listing.price),
+    pricing_model: listing.pricingModel,
+    category: listing.category,
+    rating: Number(listing.rating),
+    review_count: listing.reviewCount,
+    documentation: listing.documentation,
+    example_request: listing.exampleRequest,
+    example_response: listing.exampleResponse,
+    rate_limit_per_sec: listing.api.rateLimitPerSec,
+    max_concurrent: listing.api.maxConcurrent,
+    popularity,
+    has_purchased: !!hasPurchased,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -201,6 +250,18 @@ export async function getBuyerPurchases(buyerId: string) {
     orderBy: { purchaseDate: 'desc' },
     include: { api: { select: { id: true, name: true, status: true, endpointUrl: true } } },
   });
+  if (purchases.length === 0) return [];
+
+  // MY usage totals per API (never another buyer's) — same callerId-scoped
+  // aggregation pattern as getBuyerCallHistory below.
+  const usageByApiId = await db.apiCall.groupBy({
+    by: ['apiId'],
+    where: { apiId: { in: purchases.map((p) => p.apiId) }, callerId: buyerId },
+    _count: { _all: true },
+    _sum: { costBdt: true },
+  });
+  const usageMap = new Map(usageByApiId.map((u) => [u.apiId, { calls: u._count._all, cost: Number(u._sum.costBdt || 0) }]));
+
   return purchases.map((p) => ({
     api_id: p.apiId,
     name: p.api.name,
@@ -209,6 +270,8 @@ export async function getBuyerPurchases(buyerId: string) {
     purchase_date: p.purchaseDate,
     price_paid: Number(p.pricePaid || 0),
     status: p.status,
+    total_calls: usageMap.get(p.apiId)?.calls || 0,
+    total_cost_bdt: usageMap.get(p.apiId)?.cost || 0,
   }));
 }
 

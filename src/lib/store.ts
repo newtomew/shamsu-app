@@ -98,6 +98,14 @@ export async function getApi(id: string): Promise<Api | null> {
   return db.api.findUnique({ where: { id } });
 }
 
+// Creator-facing pause/resume (PRD section 3.6 schema: status is
+// 'active' | 'paused' | 'deleted'). Deliberately restricted to those two
+// values here — 'deleted' stays exclusive to the soft-delete-with-backup
+// flow in marketplace.ts's deleteApiWithBackup, never a plain status write.
+export async function setApiStatus(id: string, status: 'active' | 'paused'): Promise<void> {
+  await db.api.update({ where: { id }, data: { status } });
+}
+
 export interface ResolvedApiKey {
   api: Api;
   apiKeyId: string;

@@ -25,3 +25,22 @@ export async function submitCreditPurchase(userId: string, amountBdt: number, pa
 export async function getUserCreditPurchases(userId: string) {
   return db.creditPurchase.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
 }
+
+// Billing page's "spend history" — every call this user made as a caller,
+// across every API (their own, for testing, or ones they bought), not
+// scoped to one API like marketplace.ts's getBuyerCallHistory.
+export async function getUserSpendHistory(userId: string, limit = 50) {
+  const calls = await db.apiCall.findMany({
+    where: { callerId: userId },
+    orderBy: { timestamp: 'desc' },
+    take: limit,
+    include: { api: { select: { name: true } } },
+  });
+  return calls.map((c) => ({
+    id: c.id,
+    api_name: c.api.name,
+    timestamp: c.timestamp,
+    status: c.status,
+    cost_bdt: c.costBdt != null ? Number(c.costBdt) : null,
+  }));
+}

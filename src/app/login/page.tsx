@@ -29,19 +29,24 @@ function LoginForm() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    const json = await res.json();
-    setBusy(false);
-    if (!json.success) {
-      setError(json.error);
-      return;
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setError(json.error);
+        return;
+      }
+      router.push(searchParams.get('next') || '/');
+      router.refresh();
+    } catch {
+      setError('Could not reach the server. Check your connection and try again.');
+    } finally {
+      setBusy(false);
     }
-    router.push(searchParams.get('next') || '/');
-    router.refresh();
   }
 
   return (

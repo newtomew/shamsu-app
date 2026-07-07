@@ -2,8 +2,16 @@
 
 // Analytics page (PRD section 2.4): usage over time, top buyers, daily
 // earnings by buyer, error logs — across all of the creator's APIs.
+// Visual pass only — the /api/analytics contract is unchanged.
 
 import { useEffect, useState } from 'react';
+import { AlertTriangle, BarChart3, TrendingUp, Users } from 'lucide-react';
+import { AppShell } from '@/components/AppShell';
+import { Card } from '@/components/ui/Card';
+import { Badge, statusToVariant } from '@/components/ui/Badge';
+import { Table, TableColumn } from '@/components/ui/Table';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface UsagePoint {
   day: string;
@@ -37,117 +45,138 @@ interface AnalyticsData {
 
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const res = await fetch('/api/analytics');
-      const json = await res.json();
-      if (json.success) setData(json.data);
+      try {
+        const res = await fetch('/api/analytics');
+        const json = await res.json();
+        if (!json.success) {
+          setLoadError(json.error || 'Could not load your analytics right now.');
+          return;
+        }
+        setData(json.data);
+      } catch {
+        setLoadError('Could not reach the server. Check your connection and try again.');
+      }
     })();
   }, []);
 
-  if (!data) return <main style={{ padding: 24 }}>Loading…</main>;
+  if (loadError) {
+    return (
+      <AppShell active="analytics" eyebrow="INSIGHTS" title="Analytics">
+        <Card className="flex items-center gap-3 p-6 text-danger">
+          <AlertTriangle className="h-5 w-5 flex-none" aria-hidden />
+          {loadError}
+        </Card>
+      </AppShell>
+    );
+  }
+
+  if (!data) {
+    return (
+      <AppShell active="analytics" eyebrow="INSIGHTS" title="Analytics">
+        <div className="space-y-6">
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-56 w-full" />
+        </div>
+      </AppShell>
+    );
+  }
 
   const maxCalls = Math.max(1, ...data.usage_over_time.map((p) => p.calls));
 
+  const buyerColumns: TableColumn<TopBuyer>[] = [
+    { key: 'buyer_email', label: 'Buyer', render: (b) => b.buyer_email },
+    { key: 'calls', label: 'Calls', align: 'right', render: (b) => b.calls },
+    { key: 'revenue_bdt', label: 'Revenue', align: 'right', render: (b) => `${b.revenue_bdt.toFixed(4)} BDT` },
+  ];
+  const earningsColumns: TableColumn<DailyEarning>[] = [
+    { key: 'day', label: 'Day', render: (r) => new Date(r.day).toLocaleDateString() },
+    { key: 'email', label: 'Buyer', render: (r) => r.email },
+    { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => `${Number(r.revenue).toFixed(4)} BDT` },
+  ];
+  const errorColumns: TableColumn<ErrorLog>[] = [
+    { key: 'timestamp', label: 'Time', render: (e) => new Date(e.timestamp).toLocaleString() },
+    { key: 'api_name', label: 'API', render: (e) => <span className="font-medium text-ink">{e.api_name}</span> },
+    { key: 'buyer', label: 'Caller', render: (e) => e.buyer },
+    { key: 'status', label: 'Status', render: (e) => <Badge variant={statusToVariant(e.status)}>{e.status}</Badge> },
+    { key: 'error', label: 'Error', render: (e) => e.error || '—' },
+  ];
+
   return (
-    <main style={{ padding: 24, fontFamily: 'sans-serif', maxWidth: 800 }}>
-      <p>
-        <a href="/dashboard">← Dashboard</a>
-      </p>
-      <h1>Analytics</h1>
+    <AppShell active="analytics" eyebrow="INSIGHTS" title="Analytics">
+      <div className="space-y-8">
+        <section>
+          <p className="mb-3 flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-muted">
+            <BarChart3 className="h-3.5 w-3.5" aria-hidden />
+            Usage over time
+          </p>
+          {data.usage_over_time.length === 0 ? (
+            <EmptyState title="No calls yet" description="Once your APIs start getting called, daily usage shows up here." />
+          ) : (
+            <Card className="p-6">
+              <div className="flex h-32 items-end gap-2 overflow-x-auto">
+                {data.usage_over_time.map((p) => {
+                  // Pixel height, not percentage — a percentage height only
+                  // resolves against a parent with a *definite* height, and
+                  // this bar's immediate parent (a flex column sized by its
+                  // own content) doesn't have one.
+                  const barHeightPx = Math.max(4, Math.round((p.calls / maxCalls) * 96));
+                  return (
+                    <div key={p.day} className="flex flex-1 flex-col items-center gap-2" title={`${p.day}: ${p.calls} calls`}>
+                      <div
+                        className="w-full min-w-[8px] rounded-t-sm bg-accent transition-all duration-300"
+                        style={{ height: `${barHeightPx}px` }}
+                      />
+                      <span className="font-mono text-[10px] text-muted">
+                        {new Date(p.day).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+        </section>
 
-      <section style={{ marginBottom: 32 }}>
-        <h2>Usage over time</h2>
-        {data.usage_over_time.length === 0 && <p>No calls yet.</p>}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 120 }}>
-          {data.usage_over_time.map((p) => (
-            <div key={p.day} title={`${p.day}: ${p.calls} calls`} style={{ textAlign: 'center' }}>
-              <div style={{ height: (p.calls / maxCalls) * 100, width: 24, background: '#4a90d9' }} />
-              <div style={{ fontSize: 10 }}>{new Date(p.day).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+        <section>
+          <p className="mb-3 flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-muted">
+            <Users className="h-3.5 w-3.5" aria-hidden />
+            Top buyers
+          </p>
+          {data.top_buyers.length === 0 ? (
+            <EmptyState title="No buyers yet" description="Nobody besides you has called your APIs yet." />
+          ) : (
+            <Table columns={buyerColumns} rows={data.top_buyers} rowKey={(b) => b.buyer_id} />
+          )}
+        </section>
 
-      <section style={{ marginBottom: 32 }}>
-        <h2>Top buyers</h2>
-        {data.top_buyers.length === 0 && <p>No buyers yet — nobody besides you has called your APIs.</p>}
-        {data.top_buyers.length > 0 && (
-          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left' }}>Buyer</th>
-                <th style={{ textAlign: 'left' }}>Calls</th>
-                <th style={{ textAlign: 'left' }}>Revenue (BDT)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.top_buyers.map((b) => (
-                <tr key={b.buyer_id}>
-                  <td>{b.buyer_email}</td>
-                  <td>{b.calls}</td>
-                  <td>{b.revenue_bdt.toFixed(4)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+        <section>
+          <p className="mb-3 flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-muted">
+            <TrendingUp className="h-3.5 w-3.5" aria-hidden />
+            Daily earnings by buyer
+          </p>
+          {data.daily_earnings_by_buyer.length === 0 ? (
+            <EmptyState title="No earnings yet" description="Earnings from buyer calls will be broken down by day here." />
+          ) : (
+            <Table columns={earningsColumns} rows={data.daily_earnings_by_buyer} rowKey={(r) => `${r.day}-${r.caller_id}`} />
+          )}
+        </section>
 
-      <section style={{ marginBottom: 32 }}>
-        <h2>Daily earnings by buyer</h2>
-        {data.daily_earnings_by_buyer.length === 0 && <p>No earnings yet.</p>}
-        {data.daily_earnings_by_buyer.length > 0 && (
-          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left' }}>Day</th>
-                <th style={{ textAlign: 'left' }}>Buyer</th>
-                <th style={{ textAlign: 'left' }}>Revenue (BDT)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.daily_earnings_by_buyer.map((row, i) => (
-                <tr key={i}>
-                  <td>{new Date(row.day).toLocaleDateString()}</td>
-                  <td>{row.email}</td>
-                  <td>{Number(row.revenue).toFixed(4)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
-      <section>
-        <h2>Error logs</h2>
-        {data.error_logs.length === 0 && <p>No errors logged.</p>}
-        {data.error_logs.length > 0 && (
-          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left' }}>Timestamp</th>
-                <th style={{ textAlign: 'left' }}>API</th>
-                <th style={{ textAlign: 'left' }}>Buyer</th>
-                <th style={{ textAlign: 'left' }}>Status</th>
-                <th style={{ textAlign: 'left' }}>Error</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.error_logs.map((e, i) => (
-                <tr key={i}>
-                  <td>{new Date(e.timestamp).toLocaleString()}</td>
-                  <td>{e.api_name}</td>
-                  <td>{e.buyer}</td>
-                  <td>{e.status}</td>
-                  <td>{e.error}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-    </main>
+        <section>
+          <p className="mb-3 flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-muted">
+            <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+            Error logs
+          </p>
+          {data.error_logs.length === 0 ? (
+            <EmptyState title="No errors logged" description="Failed or timed-out calls across your APIs will show up here." />
+          ) : (
+            <Table columns={errorColumns} rows={data.error_logs} rowKey={(e) => `${e.timestamp}-${e.api_name}-${e.buyer}`} />
+          )}
+        </section>
+      </div>
+    </AppShell>
   );
 }

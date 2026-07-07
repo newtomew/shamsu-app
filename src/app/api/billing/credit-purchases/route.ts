@@ -4,16 +4,36 @@
 // this endpoint only creates the 'pending' record.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUser } from '@/lib/auth';
-import { submitCreditPurchase, getUserCreditPurchases } from '@/lib/billing';
+import { getSessionUser, publicUser } from '@/lib/auth';
+import { submitCreditPurchase, getUserCreditPurchases, getUserSpendHistory } from '@/lib/billing';
+import { getCreatorEarnings } from '@/lib/marketplace';
 
 export async function GET(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) {
     return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
   }
-  const purchases = await getUserCreditPurchases(user.id);
-  return NextResponse.json({ success: true, data: purchases });
+  const [purchases, spendHistory, earnings] = await Promise.all([
+    getUserCreditPurchases(user.id),
+    getUserSpendHistory(user.id),
+    getCreatorEarnings(user.id),
+  ]);
+  return NextResponse.json({
+    success: true,
+    data: {
+      credit_balance: publicUser(user).api_credits_balance,
+      purchases,
+      spend_history: spendHistory,
+      creator_earnings: earnings
+        ? {
+            total_earnings: Number(earnings.totalEarnings),
+            pending_payout: Number(earnings.pendingPayout),
+            paid_out: Number(earnings.paidOut),
+            last_payout_date: earnings.lastPayoutDate,
+          }
+        : null,
+    },
+  });
 }
 
 export async function POST(req: NextRequest) {
