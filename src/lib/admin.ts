@@ -68,7 +68,7 @@ export async function listDisputes(status?: string) {
     orderBy: { createdAt: 'desc' },
     include: { buyer: { select: { email: true } }, api: { select: { name: true, creatorId: true } } },
   });
-  return disputes.map((d) => ({
+  return disputes.map((d: typeof disputes[0]) => ({
     id: d.id,
     buyer_email: d.buyer.email,
     api_id: d.apiId,
@@ -92,7 +92,7 @@ export async function testDisputeApi(disputeId: string, adminId: string) {
 
   const api = dispute.api;
   const variables = ((api.variableSchema as { inputs?: { name: string; example?: string }[] } | null)?.inputs || []);
-  const inputs = Object.fromEntries(variables.map((v) => [v.name, v.example || 'value']));
+  const inputs = Object.fromEntries(variables.map((v: { name: string; example?: string }) => [v.name, v.example || 'value']));
 
   const result = await runApi(api, inputs, adminId, COST_PER_CALL_BDT);
   await db.dispute.update({ where: { id: disputeId }, data: { testResult: result as unknown as object } });
@@ -171,7 +171,7 @@ export async function listCreators() {
     include: { _count: { select: { apis: true } } },
     take: ADMIN_LIST_CAP,
   });
-  return users.map((u) => ({
+  return users.map((u: typeof users[0]) => ({
     id: u.id,
     email: u.email,
     is_admin: u.isAdmin,
@@ -198,7 +198,7 @@ export async function listAllApis() {
     include: { creator: { select: { email: true, moderationStatus: true } } },
     take: ADMIN_LIST_CAP,
   });
-  return apis.map((a) => ({
+  return apis.map((a: typeof apis[0]) => ({
     id: a.id,
     name: a.name,
     status: a.status,
