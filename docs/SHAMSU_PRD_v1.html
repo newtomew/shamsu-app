@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shamsu — Product Requirements Document</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rethink+Sans:ital,wght@0,400;0,600;0,700;0,800;1,700;1,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --red:#e90d41; --red-deep:#b80a33;
+  --page:#f7f7f8; --ink:#0a0a0a;
+  --pink:#fdecf1; --yellow:#fbf3da; --green:#eafaf1;
+  --line:#e5e5e8; --muted:#6b6b70;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Inter',sans-serif; color:var(--ink); background:var(--page);
+  line-height:1.6;
+  background-image:linear-gradient(rgba(0,0,0,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.025) 1px,transparent 1px);
+  background-size:26px 26px;
+}
+.topbar{
+  position:sticky; top:0; z-index:100; background:var(--ink); color:#fff;
+  border-bottom:3px solid var(--red);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 28px;
+}
+.topbar .brand{font-family:'JetBrains Mono',monospace; font-weight:700; letter-spacing:2px; font-size:13px; text-transform:uppercase}
+.topbar .brand span{color:var(--red)}
+.topbar button{
+  font-family:'JetBrains Mono',monospace; font-weight:600; font-size:11px; letter-spacing:1px;
+  text-transform:uppercase; background:var(--red); color:#fff; border:none;
+  padding:9px 16px; border-radius:6px; cursor:pointer; transition:background .2s;
+}
+.topbar button:hover{background:var(--red-deep)}
+.wrap{max-width:920px; margin:0 auto; padding:0 24px 100px}
+.hero{padding:64px 0 28px}
+.eyebrow{
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; letter-spacing:2.5px;
+  text-transform:uppercase; color:var(--red); margin-bottom:18px;
+}
+.hero h1{
+  font-family:'Rethink Sans',sans-serif; font-weight:800; font-size:clamp(38px,6vw,62px);
+  line-height:1.04; letter-spacing:-1.5px;
+}
+.hero h1 em{color:var(--red); font-style:italic}
+.hero .sub{margin-top:22px; font-size:18px; color:var(--muted); max-width:640px}
+.meta-row{display:flex; flex-wrap:wrap; gap:10px; margin-top:28px}
+.meta-tag{
+  font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; letter-spacing:.5px;
+  background:#fff; border:1px solid var(--line); border-radius:20px; padding:7px 14px;
+}
+.meta-tag b{color:var(--red)}
+.nav{display:flex; flex-wrap:wrap; gap:10px; margin:36px 0 8px}
+.pill{
+  display:flex; align-items:center; gap:9px; text-decoration:none; color:var(--ink);
+  background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 15px;
+  font-weight:600; font-size:14px; transition:border-color .2s,transform .15s;
+}
+.pill:hover{border-color:var(--red); transform:translateY(-1px)}
+.pill .n{
+  font-family:'JetBrains Mono',monospace; background:var(--red); color:#fff;
+  width:22px; height:22px; border-radius:50%; display:grid; place-items:center;
+  font-size:11px; font-weight:700;
+}
+.section-card{
+  background:#fff; border:1px solid var(--line); border-left:6px solid var(--red);
+  border-radius:14px; padding:40px 42px; margin-top:26px;
+  box-shadow:0 1px 3px rgba(0,0,0,.03);
+}
+.sec-label{
+  font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; letter-spacing:2px;
+  text-transform:uppercase; color:var(--muted); margin-bottom:12px;
+}
+.section-card h2{
+  font-family:'Rethink Sans',sans-serif; font-weight:800; font-size:clamp(26px,3.6vw,36px);
+  line-height:1.1; letter-spacing:-.8px; margin-bottom:20px;
+}
+.section-card h2 em{color:var(--red); font-style:italic}
+.section-card h3{
+  font-family:'Rethink Sans',sans-serif; font-weight:700; font-size:20px;
+  margin:28px 0 12px; letter-spacing:-.3px;
+}
+.section-card p{margin-bottom:14px; color:#26262b}
+.section-card ul{margin:0 0 16px 4px; list-style:none}
+.section-card ul li{position:relative; padding-left:22px; margin-bottom:9px; color:#26262b}
+.section-card ul li::before{content:"▸"; position:absolute; left:0; color:var(--red); font-weight:700}
+.section-card strong{font-weight:700}
+code{font-family:'JetBrains Mono',monospace; font-size:.86em; background:var(--pink); color:var(--red-deep); padding:2px 6px; border-radius:4px}
+
+.cat-banner{
+  background:var(--ink); color:#fff; border-radius:10px; padding:14px 22px; margin:30px 0 18px;
+  font-family:'Rethink Sans',sans-serif; font-weight:700; font-size:16px; letter-spacing:-.2px;
+}
+.cat-banner span{color:var(--red)}
+
+.step{display:flex; gap:16px; margin-bottom:16px; align-items:flex-start}
+.step .circle{
+  flex-shrink:0; width:34px; height:34px; border-radius:50%; background:var(--red); color:#fff;
+  display:grid; place-items:center; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px;
+}
+.step .body{padding-top:3px}
+.step .body b{font-family:'Rethink Sans',sans-serif; font-weight:700}
+
+.callout{border-radius:10px; padding:18px 22px; margin:18px 0; border-left:5px solid}
+.callout.red{background:var(--pink); border-color:var(--red)}
+.callout.yellow{background:var(--yellow); border-color:#d9a808}
+.callout.green{background:var(--green); border-color:#1a9d5f}
+.callout .k{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:6px; display:block}
+.callout.red .k{color:var(--red-deep)} .callout.yellow .k{color:#a07c00} .callout.green .k{color:#127a48}
+
+.equation{display:flex; flex-wrap:wrap; border-radius:12px; overflow:hidden; margin:22px 0; border:1px solid var(--line)}
+.eq-side{flex:1; min-width:240px; padding:22px 24px}
+.eq-side.old{background:var(--ink); color:#fff}
+.eq-side.new{background:var(--red); color:#fff}
+.eq-side .tag{font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; opacity:.75; margin-bottom:8px; display:block}
+.eq-side p{color:#fff!important; margin:0; font-weight:500}
+
+.tool{border:1px solid var(--line); border-radius:11px; padding:20px 22px; margin-bottom:14px; background:#fff}
+.tool .name{font-family:'Rethink Sans',sans-serif; font-weight:700; font-size:17px; margin-bottom:5px}
+.tool .name span{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--red); border:1px solid var(--red); border-radius:5px; padding:2px 7px; margin-left:8px; vertical-align:middle}
+.tool p{margin:0; color:var(--muted); font-size:14.5px}
+
+table.grid{width:100%; border-collapse:collapse; margin:18px 0; font-size:14px}
+table.grid th{background:var(--ink); color:#fff; text-align:left; padding:11px 14px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; font-weight:600}
+table.grid td{padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top}
+table.grid tr:nth-child(even) td{background:#fafafb}
+table.grid td b{color:var(--red-deep)}
+
+.snippet{background:var(--ink); border-radius:12px; padding:0; margin:20px 0; overflow:hidden}
+.snippet .head{display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid #222}
+.snippet .head .lbl{font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:#9a9aa0}
+.snippet .head button{font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; background:var(--red); color:#fff; border:none; padding:6px 12px; border-radius:5px; cursor:pointer}
+.snippet pre{margin:0; padding:18px; overflow-x:auto; color:#e8e8ea; font-family:'JetBrains Mono',monospace; font-size:12.5px; line-height:1.65}
+.snippet pre .c{color:#7bd88f} .snippet pre .k{color:#ff6b93} .snippet pre .s{color:#f4c96b}
+
+.profile{width:100%; border-collapse:collapse; margin:16px 0}
+.profile td{padding:11px 14px; border-bottom:1px solid var(--line)}
+.profile td:first-child{font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); width:210px; font-weight:600}
+.profile td:last-child{font-weight:500}
+
+.closer{
+  background:var(--ink); color:#fff; border-radius:14px; padding:44px; margin-top:34px; text-align:center;
+}
+.closer .eyebrow{color:var(--red)}
+.closer p{
+  font-family:'Rethink Sans',sans-serif; font-weight:800; font-size:clamp(24px,3.4vw,34px);
+  line-height:1.18; letter-spacing:-.6px; color:#fff;
+}
+.closer p em{color:var(--red); font-style:italic}
+footer{text-align:center; padding:40px 0 10px; color:var(--muted); font-size:13px; font-family:'JetBrains Mono',monospace; letter-spacing:.5px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">SHAMSU<span>//</span>PRD</div>
+  <button onclick="window.print()">Save as PDF</button>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Product Requirements Document · MVP v1.0</div>
+    <h1>An API factory for people who <em>can't code.</em></h1>
+    <p class="sub">Record a browser flow. Confirm what it should do. Get a live REST API. Sell it in a marketplace. Shamsu turns non-technical users into API creators — the way Apify did for developers.</p>
+    <div class="meta-row">
+      <div class="meta-tag">Owner: <b>Md. Zahid Hoshen Masud</b></div>
+      <div class="meta-tag">Team: <b>Kopa Shamsu</b></div>
+      <div class="meta-tag">LLM: <b>Claude</b></div>
+      <div class="meta-tag">Automation: <b>Playwright</b></div>
+      <div class="meta-tag">DB: <b>PostgreSQL</b></div>
+    </div>
+    <nav class="nav">
+      <a class="pill" href="#s1"><span class="n">1</span> User Journey</a>
+      <a class="pill" href="#s2"><span class="n">2</span> Dashboard</a>
+      <a class="pill" href="#s3"><span class="n">3</span> Architecture</a>
+      <a class="pill" href="#s4"><span class="n">4</span> Operations</a>
+      <a class="pill" href="#s5"><span class="n">5</span> Business Model</a>
+      <a class="pill" href="#s6"><span class="n">6</span> Scope &amp; Build</a>
+    </nav>
+  </div>
+
+  <!-- 1 -->
+  <div class="section-card" id="s1">
+    <div class="sec-label">Part 01 · Core Loop</div>
+    <h2>Record, confirm, <em>ship an API.</em></h2>
+    <p>Every user is one of two roles: a <strong>Creator</strong> (owns a recorded flow) or a <strong>Buyer</strong> (rents a creator's endpoint). A user picks a <strong>mode</strong> — Non-tech (visual, friendly) or Developer (logs, JSON) — switchable <strong>per API</strong>. Free tier grants <strong>5 API creation attempts per day</strong> (the attempt is the unit, success or not).</p>
+
+    <div class="cat-banner"><span>The three phases</span> every API passes through</div>
+    <div class="step"><div class="circle">1</div><div class="body"><b>Record.</b> User clicks the big RED button (explicit trigger — no passive logging). The extension captures XHR/Fetch, form submissions, and navigation simultaneously. Sessions run 10 min standard, 30 min max.</div></div>
+    <div class="step"><div class="circle">2</div><div class="body"><b>Confirm.</b> A Figma/Notion-style editor where Claude restates the flow in plain English, auto-detects variables (<em>"Make 'Bangkok' a variable so callers can search any city?"</em>), auto-suggests output fields, and validates logic. This step is where the API is actually <em>defined</em> — not a cosmetic review.</div></div>
+    <div class="step"><div class="circle">3</div><div class="body"><b>Ship.</b> A real REST endpoint is generated: <code>shamsu.com/api/v1/{api-id}/call</code>, with Bearer-key auth, multiple revocable keys, a JSON spec, and an instruction file.</div></div>
+
+    <div class="callout green">
+      <span class="k">What the user gets</span>
+      Multi-step flows with if/else branching, versioning (keep or overwrite each re-recording), and an endpoint their own software can call forever.
+    </div>
+    <div class="callout yellow">
+      <span class="k">Design invariant</span>
+      The confirmation editor is the product's beating heart. Everything downstream — replay, pricing tier, reliability — is decided by how well Claude classifies the flow here.
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="section-card" id="s2">
+    <div class="sec-label">Part 02 · Dashboard</div>
+    <h2>Two roles, one enforced <em>privacy wall.</em></h2>
+    <p>Landing after first creation shows three equal CTAs: <strong>Test</strong>, <strong>Copy endpoint</strong>, <strong>View instructions</strong>. APIs display as cards with a toggle to a sortable table.</p>
+
+    <h3>Privacy isolation — enforced, not cosmetic</h3>
+    <table class="grid">
+      <tr><th>Actor</th><th>Can see</th><th>Cannot see</th></tr>
+      <tr><td><b>Creator</b></td><td>All buyers, each buyer's call count, timestamps, revenue</td><td>Other creators' private APIs</td></tr>
+      <tr><td><b>Buyer</b></td><td>Only their own call history &amp; spend</td><td>Creator revenue, other buyers' identities or usage</td></tr>
+    </table>
+
+    <div class="callout red">
+      <span class="k">Marketplace rule</span>
+      Buyers receive <strong>endpoint-only</strong> access. The recorded flow / source is never exposed. If a creator deletes an API, Shamsu keeps an encrypted backup so the buyer can recover a new endpoint.
+    </div>
+
+    <h3>Testing &amp; results</h3>
+    <ul>
+      <li><strong>Simple mode</strong> — fill variable fields, hit Run, get JSON.</li>
+      <li><strong>Advanced mode</strong> — editable cURL/JS request.</li>
+      <li><strong>Results</strong> — Buyer sees status + JSON; Creator sees full logs (headers, latency, error stack).</li>
+    </ul>
+  </div>
+
+  <!-- 3 -->
+  <div class="section-card" id="s3">
+    <div class="sec-label">Part 03 · Architecture</div>
+    <h2>The replay engine is the <em>whole ballgame.</em></h2>
+    <p>Shamsu stores <strong>both</strong> raw network calls and interpreted DOM steps. The critical decision — locked — is <strong>how replay is routed</strong>. Defaulting to "always spin up Chrome" is the trap that destroys unit economics at scale. Instead, Claude classifies each API at record-time and routes at call-time.</p>
+
+    <div class="cat-banner"><span>replay_mode</span> — classified once, routed every call</div>
+    <div class="tool"><div class="name">network_replay <span>LIGHT</span></div><p>Pure data extraction where the payload already lives in a captured XHR/JSON response. Replays the HTTP call directly — no browser. 10–50× cheaper and survives HTML redesigns.</p></div>
+    <div class="tool"><div class="name">browser_replay <span>MEDIUM / HEAVY</span></div><p>Form submission, login, any stateful or JS-dependent action (CSRF, cookies, validation, anti-bot). Full Playwright DOM replay with credential injection.</p></div>
+    <div class="tool"><div class="name">hybrid <span>HEAVY</span></div><p>Authenticated extraction ("my booking history"). Playwright establishes the logged-in session; data is pulled from the intercepted network response mid-flight.</p></div>
+
+    <div class="callout yellow">
+      <span class="k">Phase 2 — self_heal</span>
+      A network_replay API whose response signature changes auto-falls-back to browser_replay and notifies the creator to re-record. Deferred for MVP — but keep <code>replay_mode</code> extensible.
+    </div>
+
+    <h3>The call, end to end</h3>
+    <div class="snippet">
+      <div class="head"><span class="lbl">POST /api/v1/{api-id}/call</span><button onclick="cp(this)">Copy</button></div>
+      <pre><span class="c"># request</span>
+Authorization: Bearer {api-key}
+{ <span class="k">"city"</span>: <span class="s">"Bangkok"</span>, <span class="k">"hotel_type"</span>: <span class="s">"luxury"</span> }
+
+<span class="c"># response — standard wrapper</span>
+{
+  <span class="k">"success"</span>: true,
+  <span class="k">"data"</span>: { <span class="k">"hotels"</span>: [ { <span class="k">"name"</span>:<span class="s">"Hotel A"</span>, <span class="k">"price"</span>:100, <span class="k">"rating"</span>:4.5 } ] },
+  <span class="k">"meta"</span>: { <span class="k">"execution_time_ms"</span>:3400, <span class="k">"calls_remaining"</span>:950 }
+}</pre>
+    </div>
+
+    <p>Flow: validate key → check credits, rate limit, concurrency → <strong>deduct cost</strong> → branch on <code>replay_mode</code> → execute (navigate, inject variables, submit) → extract output → log &amp; return. Credentials support three per-API modes: <code>stored</code>, <code>caller-provided</code>, <code>prompt-on-call</code>. Users always authenticate with their own credentials; a login failure prompts the creator to re-authenticate in real time.</p>
+
+    <h3>Infrastructure limits</h3>
+    <table class="profile">
+      <tr><td>Automation</td><td>Playwright (Node.js)</td></tr>
+      <tr><td>Chrome pool</td><td>Autoscale by queue depth · max 50 concurrent / API</td></tr>
+      <tr><td>Rate limit</td><td>50 calls/sec per API <em>(assumed — confirm via load test)</em></td></tr>
+      <tr><td>Execution timeout</td><td>10 min / call (configurable)</td></tr>
+      <tr><td>Queue depth</td><td>10,000 max → HTTP 429 beyond</td></tr>
+      <tr><td>Encryption</td><td>AES-256 at rest · bcrypt for tokens</td></tr>
+    </table>
+
+    <div class="callout green">
+      <span class="k">Schema note</span>
+      Every <code>api_calls</code> row logs <code>step_count</code>, <code>execution_time_ms</code>, <code>chrome_duration_ms</code>, <code>claude_tokens_used</code> from call #1 — the entire cost of keeping Phase-2 weighted pricing open. Full DDL lives in the Markdown build spec.
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="section-card" id="s4">
+    <div class="sec-label">Part 04 · Operations</div>
+    <h2>Guardrails that keep the platform <em>trustworthy.</em></h2>
+
+    <h3>Monitoring</h3>
+    <p>An admin dashboard for the Kopa Shamsu team surfaces active APIs, failure rates, response times, Chrome-pool and queue depth, and credential anomalies. Alert levels are <strong>Info + Warning only</strong> — never Critical. Creators see their own API failures; Shamsu sees which API failed, for which buyer, when, and why.</p>
+
+    <h3>Abuse prevention — hybrid</h3>
+    <ul>
+      <li><strong>Automated heuristics</strong> — phishing blocklist, password/card extraction, credential-exfil patterns, spam, thin listings.</li>
+      <li><strong>Community reporting</strong> — buyers flag suspect APIs.</li>
+      <li><strong>Team review</strong> — flagged APIs held before marketplace publish.</li>
+    </ul>
+
+    <div class="cat-banner"><span>Three-stage</span> creator enforcement</div>
+    <div class="equation">
+      <div class="eq-side old"><span class="tag">Escalation</span><p>Warning → Final Warning → Ban. Admin can flag any API and ban any creator from a single console.</p></div>
+      <div class="eq-side new"><span class="tag">Disputes</span><p>Buyer opens a ticket → Shamsu auto-tests the API → 50% refund on genuine failure; full refund on fake listings.</p></div>
+    </div>
+
+    <h3>Payments &amp; recovery</h3>
+    <table class="profile">
+      <tr><td>bKash confirmation</td><td>Manual — support matches the transaction number → confirms → credits auto-added (30–60 min window)</td></tr>
+      <tr><td>Failed mid-call</td><td>Charge 50% (infra was spent) · notify creator · caller may retry</td></tr>
+      <tr><td>Flow backup</td><td>Creator exports JSON <b>and</b> Shamsu keeps an encrypted library copy — access is never lost</td></tr>
+      <tr><td>Credential rotation</td><td>90-day auto-invalidate · 60-day reminder · notify creator</td></tr>
+    </table>
+
+    <div class="callout red">
+      <span class="k">SLA target</span>
+      99.99% uptime (~52 min/yr) · &lt;5s ideal response, &lt;10s acceptable · graceful degradation puts the marketplace read-only and queues calls rather than dropping them.
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="section-card" id="s5">
+    <div class="sec-label">Part 05 · Business Model</div>
+    <h2>Simple now. Margin-safe <em>at launch.</em></h2>
+    <p>Decision locked: <strong>universal flat pricing for the beta, weighted tiers at public launch</strong> — set from real usage data, not guesswork. Flat-forever loses money on heavy APIs because Chrome + Claude cost scales with complexity.</p>
+
+    <div class="equation">
+      <div class="eq-side old"><span class="tag">MVP / Beta</span><p>Universal flat — 150 BDT per 10,000 calls. One number, ships fast, unblocks the build. Meter every call from day one.</p></div>
+      <div class="eq-side new"><span class="tag">At launch — Phase 2</span><p>Weighted tiers mapped to replay_mode. Margin protected on every call. Creator sees the price after confirmation.</p></div>
+    </div>
+
+    <table class="grid">
+      <tr><th>Tier</th><th>Maps to</th><th>Profile</th><th>Indicative</th></tr>
+      <tr><td><b>Light</b></td><td>network_replay</td><td>1–2 steps, &lt;5s, no browser</td><td>~150 BDT/10k</td></tr>
+      <tr><td><b>Medium</b></td><td>browser_replay</td><td>3–5 steps, 5–30s</td><td>~400 BDT/10k</td></tr>
+      <tr><td><b>Heavy</b></td><td>browser_replay / hybrid</td><td>6+ steps, login, &gt;30s</td><td>~1,000 BDT/10k</td></tr>
+    </table>
+
+    <h3>Marketplace &amp; audience</h3>
+    <ul>
+      <li><strong>Split:</strong> 60% creator / 40% Shamsu. Creators choose per-call or monthly subscription pricing.</li>
+      <li><strong>First segment:</strong> solo online coaches priced out of premium SaaS who need custom APIs.</li>
+      <li><strong>Creator incentive:</strong> no code, no expertise — Claude-assisted creation plus a real revenue share.</li>
+    </ul>
+    <div class="callout yellow">
+      <span class="k">Scope note</span>
+      Acquisition, financial projections, and go-to-market timeline live in the separate Marketing Plan — not this PRD.
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="section-card" id="s6">
+    <div class="sec-label">Part 06 · Scope &amp; Build</div>
+    <h2>What ships now — and what <em>waits.</em></h2>
+    <div class="equation">
+      <div class="eq-side new"><span class="tag">In MVP</span><p>Recorder · Claude confirmation · multi-step + branching · replay_mode routing · REST endpoints · both dashboards · marketplace + disputes · credential vault · admin panel · monitoring · manual bKash + credits · metering logged.</p></div>
+      <div class="eq-side old"><span class="tag">Phase 2</span><p>Weighted per-API pricing · self_heal replay · advanced caching · compliance/security audit · full KPI dashboard · roadmap beyond 3 months.</p></div>
+    </div>
+
+    <div class="cat-banner"><span>Build sequence</span> — ten steps to closed beta</div>
+    <div class="step"><div class="circle">1</div><div class="body">Scaffold — Node.js backend, Next.js frontend, PostgreSQL, Playwright.</div></div>
+    <div class="step"><div class="circle">2</div><div class="body">Chrome extension — record XHR + DOM behind the RED-button trigger.</div></div>
+    <div class="step"><div class="circle">3</div><div class="body">Recording ingest &amp; storage (both formats in one JSONB flow).</div></div>
+    <div class="step"><div class="circle">4</div><div class="body">Claude confirmation — variable/output detection, replay_mode classification, validation.</div></div>
+    <div class="step"><div class="circle">5</div><div class="body">Replay engine — network / browser / hybrid router + credential injection.</div></div>
+    <div class="step"><div class="circle">6</div><div class="body">Endpoints + key management + credit deduction + rate/concurrency limits.</div></div>
+    <div class="step"><div class="circle">7</div><div class="body">Dashboards — creator + buyer, privacy isolation enforced.</div></div>
+    <div class="step"><div class="circle">8</div><div class="body">Marketplace — listing, purchase, endpoint-only access, dispute + 50% refund.</div></div>
+    <div class="step"><div class="circle">9</div><div class="body">Admin panel — monitoring, payment tickets, 3-stage flagging, backup library.</div></div>
+    <div class="step"><div class="circle">10</div><div class="body">Metering + logging → QA → closed beta.</div></div>
+
+    <div class="callout yellow">
+      <span class="k">Confirm during build</span>
+      50 calls/sec ceiling (load-test) · AES-256/Shamsu-held keys acceptable for MVP · branching feasibility (linear fallback OK) · weighted-tier thresholds set from beta data.
+    </div>
+  </div>
+
+  <div class="closer">
+    <div class="eyebrow">The one-line thesis</div>
+    <p>Apify gave developers a platform to sell automations. Shamsu gives <em>everyone else</em> the same power — recorded in a browser, not written in code.</p>
+  </div>
+
+  <footer>SHAMSU · Product Requirements Document · MVP v1.0 · Kopa Shamsu · Confidential</footer>
+
+</div>
+
+<script>
+function cp(btn){
+  const pre = btn.closest('.snippet').querySelector('pre');
+  navigator.clipboard.writeText(pre.innerText).then(()=>{
+    const t = btn.innerText; btn.innerText='Copied'; setTimeout(()=>btn.innerText=t,1400);
+  });
+}
+</script>
+</body>
+</html>
