@@ -139,10 +139,29 @@ function classifyWithRules(flow: RecordedFlow): Classification {
     (s) => s.type === 'submit' || /submit|checkout|book|buy/i.test(JSON.stringify(s))
   );
 
-  // find a JSON-returning GET/XHR = the data source
-  const dataReq = net.find(
-    (r) => (r.method === 'GET' || r.method === 'POST') && r.response && typeof r.response === 'object'
-  );
+  // Find the JSON-returning GET/XHR = the data source. Prefer _isData first —
+  // that's the recorder's own explicit signal that this was a detected JSON
+  // response — mirroring replay.ts's pickDataRequest, which already checks
+  // _isData before falling back to the typeof-object heuristic. Without this,
+  // a request flagged _isData:true whose response was captured as a raw JSON
+  // string (not yet parsed into an object) was invisible to this search,
+  // incorrectly falling through to browser_replay despite real data having
+  // been captured.
+  let dataReq = net.find((r) => r._isData);
+  if (!dataReq) {
+    dataReq = net.find(
+      (r) => (r.method === 'GET' || r.method === 'POST') && r.response && typeof r.response === 'object'
+    );
+  }
+  // Normalize a stringified JSON response into a real object/array so
+  // output_fields extraction below (which needs to read its keys) still works.
+  if (dataReq && typeof dataReq.response === 'string') {
+    try {
+      dataReq = { ...dataReq, response: JSON.parse(dataReq.response) };
+    } catch {
+      // not actually JSON — leave as-is, output_fields extraction just won't find keys
+    }
+  }
 
   let replay_mode: Classification['replay_mode'];
   if (hasSubmit && !dataReq) replay_mode = 'browser_replay';
