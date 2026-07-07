@@ -1,0 +1,243 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Shamsu Recorder</title>
+    <style>
+      :root {
+        --ink: #0a0a0a;
+        --page: #f7f7f8;
+        --border: #e5e5e8;
+        --muted: #6b6b70;
+        --accent: #e90d41;
+        --accent-hover: #c90a37;
+        --accent-light: #fde7ec;
+        --success: #15803d;
+        --success-light: #e3f5e9;
+        --danger: #e11d48;
+        --danger-light: #ffe4e8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        width: 300px;
+        margin: 0;
+        padding: 18px;
+        background: var(--page);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, Arial, sans-serif;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .brand .badge {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 700;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .brand .name {
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: -0.01em;
+      }
+      input,
+      select {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 8px;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 13px;
+        background: #fff;
+        color: var(--ink);
+      }
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-light);
+      }
+      button {
+        width: 100%;
+        cursor: pointer;
+        border-radius: 10px;
+        font-weight: 600;
+        border: none;
+        transition: transform 0.05s ease, background-color 0.15s ease;
+      }
+      button:active {
+        transform: scale(0.98);
+      }
+
+      /* Idle: the one big crimson Record button */
+      #recordBtn {
+        background: var(--accent);
+        color: #fff;
+        font-size: 15px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      #recordBtn:hover {
+        background: var(--accent-hover);
+      }
+      #recordBtn .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #fff;
+      }
+
+      /* Recording: obvious Stop, live timer, pulsing indicator */
+      #stopBtn {
+        background: var(--ink);
+        color: #fff;
+        font-size: 15px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      #stopBtn:hover {
+        background: #1a1a1a;
+      }
+      #stopBtn .square {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        background: #fff;
+      }
+      .recording-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .pulse-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--accent);
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(233, 13, 65, 0.5);
+        }
+        70% {
+          box-shadow: 0 0 0 8px rgba(233, 13, 65, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(233, 13, 65, 0);
+        }
+      }
+      #timer {
+        text-align: center;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 28px;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.01em;
+        margin-bottom: 14px;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+        text-align: center;
+        margin: 8px 0 0;
+      }
+      .error {
+        color: var(--danger);
+        background: var(--danger-light);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        margin-top: 8px;
+      }
+      .success {
+        color: var(--success);
+        background: var(--success-light);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      a.link {
+        font-size: 12px;
+        color: var(--muted);
+        cursor: pointer;
+        display: block;
+        text-align: center;
+        margin-top: 10px;
+      }
+      a.link:hover {
+        color: var(--ink);
+      }
+      label.field-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--ink);
+        display: block;
+        margin-bottom: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="brand">
+      <span class="badge">S</span>
+      <span class="name">Shamsu Recorder</span>
+    </div>
+
+    <div id="configView" style="display: none">
+      <p class="muted" style="margin-top:0">Paste your server URL and extension token (from Account &rarr; Settings).</p>
+      <label class="field-label" for="serverUrl">Server URL</label>
+      <input id="serverUrl" placeholder="http://localhost:3000" />
+      <label class="field-label" for="token">Extension token</label>
+      <input id="token" placeholder="paste your extension token" />
+      <button id="saveConfigBtn" style="background: var(--accent); color:#fff; padding: 10px;">Save</button>
+      <p id="configError" class="error" style="display:none"></p>
+    </div>
+
+    <div id="idleView" style="display: none">
+      <label class="field-label" for="sessionLength">Session length</label>
+      <select id="sessionLength">
+        <option value="10">10 min (standard)</option>
+        <option value="30">30 min (max)</option>
+      </select>
+      <button id="recordBtn"><span class="dot"></span> Record</button>
+      <a class="link" id="editConfigLink">Change server/token</a>
+      <div id="lastResult"></div>
+    </div>
+
+    <div id="recordingView" style="display: none">
+      <div class="recording-badge">
+        <span class="pulse-dot"></span>
+        <span class="muted" style="margin:0">Recording</span>
+      </div>
+      <div id="timer">00:00</div>
+      <button id="stopBtn"><span class="square"></span> Stop</button>
+      <p class="muted">Use the page normally — every click, form fill, and network response is being captured.</p>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
