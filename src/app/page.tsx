@@ -1,28 +1,18 @@
-// Root page — reached only when logged in (middleware redirects otherwise).
-// Deliberately minimal/unstyled per Phase 3 scope; the real dashboard lands
-// in a later UI/UX pass.
+// Root page — public marketing landing page for logged-out visitors.
+// Logged-in visitors are sent straight to the dashboard. The old root
+// content (account panel: mode toggle, extension token, logout) now lives
+// at /settings, linked from the AppShell sidebar.
 
 import { cookies } from 'next/headers';
-import { getSessionUserFromCookieStore, publicUser } from '@/lib/auth';
-import AccountPanel from '@/components/AccountPanel';
+import { redirect } from 'next/navigation';
+import { getSessionUserFromCookieStore } from '@/lib/auth';
+import { LandingPage } from '@/components/LandingPage';
 
 export default async function Home() {
   const user = await getSessionUserFromCookieStore(cookies());
-
-  // Belt-and-suspenders: middleware already redirects unauthenticated
-  // visitors to /login, so this should be unreachable without a session.
-  if (!user) {
-    return <p style={{ padding: 24 }}>Not logged in.</p>;
+  if (user) {
+    redirect('/dashboard');
   }
 
-  return (
-    <main style={{ padding: 24, fontFamily: 'sans-serif', maxWidth: 480 }}>
-      <h1>Shamsu</h1>
-      <p>
-        <a href="/dashboard">Dashboard</a> · <a href="/marketplace">Marketplace</a> ·{' '}
-        <a href="/purchases">My purchases</a>
-      </p>
-      <AccountPanel user={publicUser(user)} />
-    </main>
-  );
+  return <LandingPage />;
 }

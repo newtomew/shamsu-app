@@ -1,10 +1,13 @@
 'use client';
 
-// Minimal, unstyled login page — functional only for Phase 3; styled in a
-// later UI/UX pass.
+// Login — visual pass only; the submit/redirect logic is unchanged from the
+// previous version.
 
 import { Suspense, useState, FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 
 export default function LoginPage() {
   return (
@@ -42,36 +45,51 @@ function LoginForm() {
   }
 
   return (
-    <main style={{ padding: 24, fontFamily: 'sans-serif', maxWidth: 360 }}>
-      <h1>Log in</h1>
-      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <label>
-          Email
-          <input
+    <main className="flex min-h-screen flex-col items-center justify-center bg-page px-4">
+      <div className="mb-6 flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent font-display text-base font-bold text-white">
+          S
+        </span>
+        <span className="font-display text-xl font-bold tracking-tight text-ink">Shamsu</span>
+      </div>
+
+      <Card className="w-full max-w-sm p-6">
+        <p className="font-mono text-xs uppercase tracking-widest text-muted">Welcome back</p>
+        <h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-ink">Log in</h1>
+
+        <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
+          <Input
+            label="Email"
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={{ display: 'block', width: '100%' }}
+            autoComplete="email"
           />
-        </label>
-        <label>
-          Password
-          <input
+          <Input
+            label="Password"
             type="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{ display: 'block', width: '100%' }}
+            autoComplete="current-password"
           />
-        </label>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit" disabled={busy}>
-          {busy ? 'Logging in...' : 'Log in'}
-        </button>
-      </form>
-      <p>
-        No account? <a href="/signup">Sign up</a>
+          {error && (
+            <p className="rounded-lg bg-danger-light px-3 py-2 text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
+          <Button type="submit" loading={busy} className="w-full">
+            {busy ? 'Logging in…' : 'Log in'}
+          </Button>
+        </form>
+      </Card>
+
+      <p className="mt-6 text-sm text-muted">
+        No account?{' '}
+        <a href="/signup" className="font-medium text-accent hover:text-accent-hover">
+          Sign up
+        </a>
       </p>
     </main>
   );

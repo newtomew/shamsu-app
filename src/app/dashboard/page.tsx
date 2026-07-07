@@ -1,9 +1,21 @@
 'use client';
 
 // Creator dashboard (PRD section 2.4) — all of my APIs as cards, with a
-// toggle to a sortable table, plus quick stats. Plain/functional for now.
+// toggle to a sortable table, plus quick stats.
+//
+// Visual pass only: data-fetching, sorting, and all existing behavior are
+// unchanged from the previous version — only the markup/components changed.
 
 import { useEffect, useMemo, useState } from 'react';
+import { AppShell } from '@/components/AppShell';
+import { StatCard } from '@/components/ui/StatCard';
+import { Tabs } from '@/components/ui/Tabs';
+import { Card } from '@/components/ui/Card';
+import { Table, TableColumn } from '@/components/ui/Table';
+import { Badge, statusToVariant } from '@/components/ui/Badge';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { Sparkles } from 'lucide-react';
 
 interface ApiSummary {
   id: string;
@@ -45,18 +57,18 @@ export default function DashboardPage() {
     return copy;
   }, [apis, sortKey, sortDir]);
 
-  function toggleSort(key: SortKey) {
-    if (key === sortKey) {
+  function toggleSort(key: string) {
+    const k = key as SortKey;
+    if (k === sortKey) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
-      setSortKey(key);
+      setSortKey(k);
       setSortDir('desc');
     }
   }
 
-  if (!apis) return <main style={{ padding: 24 }}>Loading…</main>;
-
-  const totals = apis.reduce(
+  const loading = apis === null;
+  const totals = (apis || []).reduce(
     (acc, a) => ({
       calls: acc.calls + a.total_calls,
       revenue: acc.revenue + a.revenue_bdt,
@@ -65,102 +77,92 @@ export default function DashboardPage() {
     { calls: 0, revenue: 0, buyers: 0 }
   );
 
+  const columns: TableColumn<ApiSummary>[] = [
+    { key: 'name', label: 'Name', sortable: true, render: (a) => <a href={`/apis/${a.id}`} className="font-medium text-ink hover:text-accent">{a.name}</a> },
+    { key: 'status', label: 'Status', sortable: true, render: (a) => <Badge variant={statusToVariant(a.status)}>{a.status}</Badge> },
+    { key: 'total_calls', label: 'Calls', sortable: true, align: 'right', render: (a) => a.total_calls },
+    { key: 'active_buyers', label: 'Buyers', sortable: true, align: 'right', render: (a) => a.active_buyers },
+    { key: 'revenue_bdt', label: 'Revenue', sortable: true, align: 'right', render: (a) => `${a.revenue_bdt.toFixed(4)} BDT` },
+    { key: 'created_at', label: 'Created', sortable: true, render: (a) => new Date(a.created_at).toLocaleDateString() },
+  ];
+
   return (
-    <main style={{ padding: 24, fontFamily: 'sans-serif', maxWidth: 960 }}>
-      <h1>Dashboard</h1>
-      <p>
-        <a href="/analytics">Analytics</a> · <a href="/marketplace">Marketplace</a> ·{' '}
-        <a href="/purchases">My purchases</a> · <a href="/billing">Billing</a> · <a href="/admin">Admin</a>
-      </p>
-
-      <section style={{ display: 'flex', gap: 24, margin: '16px 0', padding: 12, background: '#f4f4f4', color: '#111' }}>
-        <div>
-          <strong>{totals.calls}</strong>
-          <div>total calls</div>
-        </div>
-        <div>
-          <strong>{totals.revenue.toFixed(4)} BDT</strong>
-          <div>revenue</div>
-        </div>
-        <div>
-          <strong>{totals.buyers}</strong>
-          <div>active buyers</div>
-        </div>
-      </section>
-
-      {apis.length === 0 && <p>No APIs yet.</p>}
-
-      <div style={{ marginBottom: 12 }}>
-        <button onClick={() => setView('cards')} disabled={view === 'cards'}>
-          Cards
-        </button>{' '}
-        <button onClick={() => setView('table')} disabled={view === 'table'}>
-          Table
-        </button>
+    <AppShell active="dashboard" eyebrow="OVERVIEW" title={<>Your <span className="text-accent">APIs</span></>}>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Total calls" value={totals.calls} loading={loading} />
+        <StatCard label="Revenue" value={`${totals.revenue.toFixed(4)} BDT`} accent loading={loading} />
+        <StatCard label="Active buyers" value={totals.buyers} loading={loading} />
       </div>
 
-      {view === 'cards' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-          {sorted.map((api) => (
-            <a
-              key={api.id}
-              href={`/apis/${api.id}`}
-              style={{ border: '1px solid #ccc', padding: 12, display: 'block', color: 'inherit', textDecoration: 'none' }}
-            >
-              <h3 style={{ margin: '0 0 8px' }}>{api.name}</h3>
-              <p style={{ margin: 0 }}>
-                {api.status} · {api.replay_mode}
-              </p>
-              <p style={{ margin: 0 }}>{api.total_calls} calls</p>
-              <p style={{ margin: 0 }}>{api.revenue_bdt.toFixed(4)} BDT revenue</p>
-              <p style={{ margin: 0 }}>{api.active_buyers} active buyers</p>
-              {api.is_listed_in_marketplace && <p style={{ margin: 0, color: 'green' }}>Listed in marketplace</p>}
-            </a>
-          ))}
-        </div>
-      )}
+      <div className="mt-6 flex items-center justify-between">
+        <Tabs
+          items={[
+            { key: 'cards', label: 'Cards' },
+            { key: 'table', label: 'Table' },
+          ]}
+          active={view}
+          onChange={(k) => setView(k as 'cards' | 'table')}
+        />
+      </div>
 
-      {view === 'table' && (
-        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <thead>
-            <tr>
-              {(
-                [
-                  ['name', 'Name'],
-                  ['status', 'Status'],
-                  ['total_calls', 'Calls'],
-                  ['active_buyers', 'Buyers'],
-                  ['revenue_bdt', 'Revenue'],
-                  ['created_at', 'Created'],
-                ] as [SortKey, string][]
-              ).map(([key, label]) => (
-                <th
-                  key={key}
-                  onClick={() => toggleSort(key)}
-                  style={{ cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid #ccc', padding: 6 }}
-                >
-                  {label}
-                  {sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((api) => (
-              <tr key={api.id}>
-                <td style={{ padding: 6 }}>
-                  <a href={`/apis/${api.id}`}>{api.name}</a>
-                </td>
-                <td style={{ padding: 6 }}>{api.status}</td>
-                <td style={{ padding: 6 }}>{api.total_calls}</td>
-                <td style={{ padding: 6 }}>{api.active_buyers}</td>
-                <td style={{ padding: 6 }}>{api.revenue_bdt.toFixed(4)}</td>
-                <td style={{ padding: 6 }}>{new Date(api.created_at).toLocaleDateString()}</td>
-              </tr>
+      <div className="mt-4">
+        {loading && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <Card key={i} className="space-y-3 p-5">
+                <Skeleton className="h-5 w-2/3" />
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-4 w-1/2" />
+              </Card>
             ))}
-          </tbody>
-        </table>
-      )}
-    </main>
+          </div>
+        )}
+
+        {!loading && apis!.length === 0 && (
+          <EmptyState
+            icon={<Sparkles className="h-5 w-5" aria-hidden />}
+            title="No APIs yet"
+            description="Record a browser flow with the Shamsu extension or submit one via /api/recordings to see it here."
+          />
+        )}
+
+        {!loading && apis!.length > 0 && view === 'cards' && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {sorted.map((api) => (
+              <a key={api.id} href={`/apis/${api.id}`} className="block">
+                <Card className="h-full p-5 transition-shadow hover:shadow-none hover:border-ink/20">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-display text-base font-semibold text-ink">{api.name}</h3>
+                    <Badge variant={statusToVariant(api.status)}>{api.status}</Badge>
+                  </div>
+                  <p className="mt-1 font-mono text-xs text-muted">{api.replay_mode}</p>
+                  <div className="mt-4 space-y-1 text-sm text-ink">
+                    <p>{api.total_calls} calls</p>
+                    <p>{api.revenue_bdt.toFixed(4)} BDT revenue</p>
+                    <p>{api.active_buyers} active buyers</p>
+                  </div>
+                  {api.is_listed_in_marketplace && (
+                    <div className="mt-3">
+                      <Badge variant="accent">Listed in marketplace</Badge>
+                    </div>
+                  )}
+                </Card>
+              </a>
+            ))}
+          </div>
+        )}
+
+        {!loading && apis!.length > 0 && view === 'table' && (
+          <Table
+            columns={columns}
+            rows={sorted}
+            rowKey={(a) => a.id}
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={toggleSort}
+          />
+        )}
+      </div>
+    </AppShell>
   );
 }

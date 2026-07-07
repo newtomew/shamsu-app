@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { COOKIE_NAME, verifySessionToken } from '@/lib/jwt';
 
-const PUBLIC_PAGE_PATHS = ['/login', '/signup'];
+const PUBLIC_PAGE_PATHS = ['/', '/login', '/signup'];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

@@ -2,22 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Design tokens as CSS variables, mirroring tailwind.config.ts, for the rare
+ * case a raw var() is needed outside a Tailwind utility class.
+ *
+ * Deliberately no `prefers-color-scheme: dark` override: this app is a
+ * single, intentional light theme (near-black ink on off-white page), not a
+ * light/dark pair — several earlier screens broke real text-contrast on
+ * dark-mode browsers because color was only ever set implicitly. Fixing it
+ * at the token level here removes that whole class of bug instead of
+ * patching individual pages.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-ink: #0a0a0a;
+  --color-page: #f7f7f8;
+  --color-border: #e5e5e8;
+  --color-muted: #6b6b70;
+  --color-accent: #e90d41;
+  --color-accent-hover: #c90a37;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: light;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-page);
+  color: var(--color-ink);
 }
 
 @layer utilities {

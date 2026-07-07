@@ -1,10 +1,13 @@
 'use client';
 
-// Minimal, unstyled signup page — functional only for Phase 3; styled in a
-// later UI/UX pass.
+// Signup — visual pass only; the submit/redirect logic is unchanged from the
+// previous version.
 
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -34,41 +37,55 @@ export default function SignupPage() {
   }
 
   return (
-    <main style={{ padding: 24, fontFamily: 'sans-serif', maxWidth: 360 }}>
-      <h1>Sign up</h1>
-      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <label>
-          Name (optional)
-          <input value={name} onChange={(e) => setName(e.target.value)} style={{ display: 'block', width: '100%' }} />
-        </label>
-        <label>
-          Email
-          <input
+    <main className="flex min-h-screen flex-col items-center justify-center bg-page px-4">
+      <div className="mb-6 flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent font-display text-base font-bold text-white">
+          S
+        </span>
+        <span className="font-display text-xl font-bold tracking-tight text-ink">Shamsu</span>
+      </div>
+
+      <Card className="w-full max-w-sm p-6">
+        <p className="font-mono text-xs uppercase tracking-widest text-muted">Get started</p>
+        <h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-ink">
+          Create your <span className="text-accent">account</span>
+        </h1>
+
+        <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
+          <Input label="Name (optional)" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+          <Input
+            label="Email"
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={{ display: 'block', width: '100%' }}
+            autoComplete="email"
           />
-        </label>
-        <label>
-          Password (min 8 characters)
-          <input
+          <Input
+            label="Password (min 8 characters)"
             type="password"
             required
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{ display: 'block', width: '100%' }}
+            autoComplete="new-password"
           />
-        </label>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit" disabled={busy}>
-          {busy ? 'Signing up...' : 'Sign up'}
-        </button>
-      </form>
-      <p>
-        Already have an account? <a href="/login">Log in</a>
+          {error && (
+            <p className="rounded-lg bg-danger-light px-3 py-2 text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
+          <Button type="submit" loading={busy} className="w-full">
+            {busy ? 'Signing up…' : 'Sign up'}
+          </Button>
+        </form>
+      </Card>
+
+      <p className="mt-6 text-sm text-muted">
+        Already have an account?{' '}
+        <a href="/login" className="font-medium text-accent hover:text-accent-hover">
+          Log in
+        </a>
       </p>
     </main>
   );
