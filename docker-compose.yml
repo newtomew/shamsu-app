@@ -1,6 +1,9 @@
 services:
   shamsu:
-    build: .
+    build:
+      context: .
+      args:
+        DATABASE_URL: ${DATABASE_URL}
     restart: unless-stopped
     ports:
       - "3000:3000"

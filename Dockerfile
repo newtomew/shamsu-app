@@ -34,6 +34,14 @@ COPY . .
 # now that the full schema + source are present, is what actually makes
 # @/generated/prisma/client resolvable for `next build`.
 RUN npx prisma generate
+# .env is excluded from the build context on purpose (see .dockerignore) so
+# real secrets never get baked into an image layer. But src/lib/db.ts creates
+# its Prisma client at module load time, and `next build`'s page-data
+# collection phase imports that module — so DATABASE_URL alone has to be
+# present just for the build to complete, even though nothing actually
+# connects to the database yet. Passed in as a one-off build arg, not ENV,
+# so it doesn't linger as a runtime default in the final image.
+ARG DATABASE_URL
 RUN npm run build
 
 # ---- runner: the actual production image ----
